@@ -1,0 +1,40 @@
+name: Unit Test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04]
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    
+    - name: Setup Meson
+      uses: BSFishy/meson-build@v1.0.3
+      with:
+        action: setup
+        directory: build
+        setup-options: --werror
+    
+    - name: Compile with Meson
+      uses: BSFishy/meson-build@v1.0.3
+      with:
+        action: compile
+        directory: build
+    
+    - name: Test with Meson
+      uses: BSFishy/meson-build@v1.0.3
+      with:
+        action: test
+        directory: build
+        options: --verbose
