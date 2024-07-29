@@ -9,32 +9,24 @@ on:
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04]
+    runs-on: [ubuntu-24.04]
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: '3.x'
+
+    - name: Install Python Dependencies
+      run: pip install meson ninja
     
     - name: Setup Meson
-      uses: BSFishy/meson-build@v1.0.3
-      with:
-        action: setup
-        directory: build
-        setup-options: --werror
+      run: meson setup build
     
     - name: Compile with Meson
-      uses: BSFishy/meson-build@v1.0.3
-      with:
-        action: compile
-        directory: build
+      run: meson compile -C build
     
     - name: Test with Meson
-      uses: BSFishy/meson-build@v1.0.3
-      with:
-        action: test
-        directory: build
-        options: --verbose
+      run: meson test -C build --verbose
