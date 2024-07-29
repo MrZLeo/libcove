@@ -8,3 +8,7 @@ project(
     'buildtype=debugoptimized',
   ],
 )
+minico_inc = include_directories('coroutine')
+criterion = subproject('criterion')
+criterion_dep = criterion.get_variable('criterion')
+subdir('test')

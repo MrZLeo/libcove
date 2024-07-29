@@ -1,0 +1,6 @@
+[wrap-git]
+url = https://github.com/Snaipe/Criterion.git
+revision = v2.4.2
+
+; [provide]
+; dependency_names = criterion
