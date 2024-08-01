@@ -8,3 +8,13 @@ minico = executable(
   dependencies: [test_framework],
 )
 test('minico_test', minico)
+
+rbtree = executable(
+  'rbtree',
+  sources: ['rbtree.c', container_src],
+  include_directories: [container_inc, utils],
+  # c_args: ['-D__LIBCOVE_RBTREE_DEBUG__'],
+  dependencies: [test_framework],
+
+)
+test('rbtree_test', rbtree)
