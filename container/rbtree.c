@@ -53,7 +53,7 @@ static inline void __rb_rotate_right(
     struct rb_node *child,
     uint64_t color
 ) {
-    struct rb_node *cr = child->rb_left;
+    struct rb_node *cr = child->rb_right;
     parent->rb_left = cr;
     child->rb_right = parent;
     if (cr)
@@ -279,12 +279,11 @@ static inline struct rb_node *__rb_erase(
         // black nodes due to `!tmp`.
         __rb_change_child(node, child, parent, root);
 
-        struct rb_node prev_node = *node;
         if (child) {
             child->__rb_parent_color = node->__rb_parent_color;
             return NULL;
         }
-        return rb_is_black(&prev_node) ? parent : NULL;
+        return rb_is_black(node) ? parent : NULL;
     } else if (!child) {
         // The same as case1, and tmp is the only child
         __rb_change_child(node, tmp, parent, root);
@@ -309,10 +308,12 @@ static inline struct rb_node *__rb_erase(
         } else {
             // child has left child, then we need to find the successor
             // of node in the right subtree of child
+            struct rb_node *cur;
             do {
                 parent = successor;
+                cur = successor->rb_left;
                 successor = successor->rb_left;
-            } while (successor->rb_left);
+            } while (cur);
             succ_right = successor->rb_right;
             parent->rb_left = succ_right;
             successor->rb_right = child;
@@ -322,8 +323,9 @@ static inline struct rb_node *__rb_erase(
         successor->rb_left = tmp;
         rb_set_parent(tmp, successor);
 
-        struct rb_node prev_succ = *successor;
-        successor->__rb_parent_color = node->__rb_parent_color;
+        // struct rb_node prev_succ = *successor;
+        // successor->__rb_parent_color = node->__rb_parent_color;
+        __auto_type pc = node->__rb_parent_color;
         /*rb_set_parent(successor, rb_parent(node));*/
         __rb_change_child(node, successor, rb_parent(node), root);
 
@@ -337,11 +339,15 @@ static inline struct rb_node *__rb_erase(
         // accroding to 2 cases, we can just setting succ_right to be BLACK.
         // However, it succ_right doesn't exist, we need to recover from parent
         // if successor is BLACK.
+        struct rb_node *rebalance;
         if (succ_right) {
             rb_set_parent_color(succ_right, parent, RB_BLACK);
-            return NULL;
-        }
-        return rb_is_black(&prev_succ) ? parent : NULL;
+            rebalance = NULL;
+        } else
+            rebalance = rb_is_black(successor) ? parent : NULL;
+
+        successor->__rb_parent_color = pc;
+        return rebalance;
     }
 }
 
@@ -414,6 +420,8 @@ static inline void __rb_erase_rebalance(
                      */
                     node = parent;
                     parent = rb_parent(node);
+                    if (!parent)
+                        break;
                     continue;
                 }
                 /*
@@ -451,7 +459,9 @@ static inline void __rb_erase_rebalance(
              *  then make tmp1 to be BLACK
              */
             __rb_rotate_left(parent, siblings, RB_BLACK);
+            rb_set_parent_color(tmp1, siblings, RB_BLACK);
             __rb_rotate_set_parent(parent, siblings, root, RB_BLACK);
+            break;
         } else {
             // FIXME
             siblings = parent->rb_left;

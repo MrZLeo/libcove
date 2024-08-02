@@ -1,7 +1,8 @@
-#include "rbtree.h"
-#include "tools.h"
 #include <criterion/assert.h>
 #include <criterion/criterion.h>
+
+#include "rbtree.h"
+#include "tools.h"
 
 // Define a structure that includes rb_node
 struct my_node {
