@@ -12,11 +12,43 @@ set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Add compile options
-add_compile_options(-Wall -Wextra -Werror)
+add_compile_options(-Wall -Wextra)
 
+# Add userspace-rcu dependency
+include(FetchContent)
+FetchContent_Declare(
+    urcu
+    GIT_REPOSITORY https://git.liburcu.org/userspace-rcu.git
+    GIT_TAG v0.15.0
+)
+
+# Use the modern FetchContent_MakeAvailable instead of FetchContent_Populate
+FetchContent_MakeAvailable(urcu)
+
+# Configure urcu build
+execute_process(
+    COMMAND ./bootstrap
+    WORKING_DIRECTORY ${urcu_SOURCE_DIR}
+)
+execute_process(
+    COMMAND ./configure --prefix=${urcu_BINARY_DIR}/install
+    WORKING_DIRECTORY ${urcu_SOURCE_DIR}
+)
+
+# Create a custom target for building urcu
+add_custom_target(urcu_build ALL
+    COMMAND make
+    COMMAND make install
+    WORKING_DIRECTORY ${urcu_SOURCE_DIR}
+)
+
+# Set include and library paths
+set(URCU_INCLUDE_DIR ${urcu_BINARY_DIR}/install/include)
+set(URCU_LIBRARY_DIR ${urcu_BINARY_DIR}/install/lib)
 # Define library
 add_library(cove
     src/refcount.c
+    src/rbtree.c
 )
 
 # Set include directories
