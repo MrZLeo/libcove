@@ -14,7 +14,7 @@ set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Add compile options
-add_compile_options(-Wall -Wextra)
+add_compile_options(-Wall -Wextra -Werror)
 
 # Add userspace-rcu dependency
 include(FetchContent)
@@ -28,26 +28,37 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(urcu)
 
 # Configure urcu build
-execute_process(COMMAND ./bootstrap WORKING_DIRECTORY ${urcu_SOURCE_DIR})
+execute_process(
+    COMMAND ./bootstrap
+    WORKING_DIRECTORY ${urcu_SOURCE_DIR}
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
 execute_process(
     COMMAND ./configure --prefix=${urcu_BINARY_DIR}/install
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
+    OUTPUT_QUIET
+    ERROR_QUIET
 )
 
 # Create a custom target for building urcu
 add_custom_target(
     urcu_build
     ALL
-    COMMAND make
-    COMMAND make install
+    COMMAND make > /dev/null
+    # COMMAND make install
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
 )
 
 # Set include and library paths
 set(URCU_INCLUDE_DIR ${urcu_BINARY_DIR}/install/include)
 set(URCU_LIBRARY_DIR ${urcu_BINARY_DIR}/install/lib)
+
 # Define library
 add_library(cove src/refcount.c src/rbtree.c)
+
+# Add dependency on urcu_build
+add_dependencies(cove urcu_build)
 
 # Set include directories
 target_include_directories(
@@ -55,8 +66,14 @@ target_include_directories(
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${URCU_INCLUDE_DIR}
 )
+
+# Link against urcu
+target_link_directories(cove PRIVATE ${URCU_LIBRARY_DIR})
+target_link_libraries(cove PRIVATE urcu)
 
 # Testing
 option(COVE_BUILD_TESTS "Build the test suite" ON)

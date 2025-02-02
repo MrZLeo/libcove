@@ -19,6 +19,7 @@
 
 #include "rbtree_types.h"
 #include "urcu.h"
+#include "container_of.h"
 
 #include <stddef.h>
 

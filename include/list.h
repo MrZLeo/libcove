@@ -5,18 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-/**
- * Casts a member of a structure out to the containing structure
- * @param ptr        the pointer to the member.
- * @param type       the type of the container struct this is embedded in.
- * @param member     the name of the member within the struct.
- *
- */
-#define container_of(ptr, type, member)                      \
-    ({                                                       \
-        const typeof(((type *) 0)->member) *__mptr = (ptr);  \
-        (type *) ((char *) __mptr - offsetof(type, member)); \
-    })
+#include "container_of.h"
 
 /*
  * These are non-NULL pointers that will result in page faults
