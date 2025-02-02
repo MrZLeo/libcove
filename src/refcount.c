@@ -66,5 +66,3 @@ inline bool arc_cmp(const struct arc *refcount, const uint32_t val) {
         return false;
     return atomic_load_explicit(&refcount->ref, memory_order_acquire) == val;
 }
-
-

@@ -156,7 +156,8 @@ static inline bool __list_add_valid(
 ) {
     return true;
 }
-static inline bool __list_del_entry_valid(__attribute__((unused)) struct list_head *entry) {
+static inline bool __list_del_entry_valid(__attribute__((unused)
+) struct list_head *entry) {
     return true;
 }
 #endif
@@ -1265,4 +1266,3 @@ static inline size_t hlist_count_nodes(struct hlist_head *head) {
 }
 
 #endif
-

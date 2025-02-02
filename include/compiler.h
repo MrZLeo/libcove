@@ -6,238 +6,251 @@
 
 #ifndef __ASSEMBLY__
 
-/*
- * Note: DISABLE_BRANCH_PROFILING can be used by special lowlevel code
- * to disable branch tracing on a per file basis.
- */
-#if defined(CONFIG_TRACE_BRANCH_PROFILING) \
-    && !defined(DISABLE_BRANCH_PROFILING) && !defined(__CHECKER__)
-#define likely_notrace(x)	__builtin_expect(!!(x), 1)
-#define unlikely_notrace(x)	__builtin_expect(!!(x), 0)
+    /*
+     * Note: DISABLE_BRANCH_PROFILING can be used by special lowlevel code
+     * to disable branch tracing on a per file basis.
+     */
+    #if defined(CONFIG_TRACE_BRANCH_PROFILING) \
+        && !defined(DISABLE_BRANCH_PROFILING) && !defined(__CHECKER__)
+        #define likely_notrace(x) __builtin_expect(!!(x), 1)
+        #define unlikely_notrace(x) __builtin_expect(!!(x), 0)
 
-#define __branch_check__(x, expect, is_constant) ({			\
-			long ______r;					\
-			static struct ftrace_likely_data		\
-				__aligned(4)				\
-				__section("_ftrace_annotated_branch")	\
-				______f = {				\
-				.data.func = __func__,			\
-				.data.file = __FILE__,			\
-				.data.line = __LINE__,			\
-			};						\
-			______r = __builtin_expect(!!(x), expect);	\
-			ftrace_likely_update(&______f, ______r,		\
-					     expect, is_constant);	\
-			______r;					\
-		})
+        #define __branch_check__(x, expect, is_constant)                      \
+            ({                                                                \
+                long ______r;                                                 \
+                static struct ftrace_likely_data __aligned(4)                 \
+                    __section("_ftrace_annotated_branch") ______f = {         \
+                        .data.func = __func__,                                \
+                        .data.file = __FILE__,                                \
+                        .data.line = __LINE__,                                \
+                    };                                                        \
+                ______r = __builtin_expect(!!(x), expect);                    \
+                ftrace_likely_update(&______f, ______r, expect, is_constant); \
+                ______r;                                                      \
+            })
 
-/*
- * Using __builtin_constant_p(x) to ignore cases where the return
- * value is always the same.  This idea is taken from a similar patch
- * written by Daniel Walker.
- */
-# ifndef likely
-#  define likely(x)	(__branch_check__(x, 1, __builtin_constant_p(x)))
-# endif
-# ifndef unlikely
-#  define unlikely(x)	(__branch_check__(x, 0, __builtin_constant_p(x)))
-# endif
+        /*
+         * Using __builtin_constant_p(x) to ignore cases where the return
+         * value is always the same.  This idea is taken from a similar patch
+         * written by Daniel Walker.
+         */
+        #ifndef likely
+            #define likely(x) (__branch_check__(x, 1, __builtin_constant_p(x)))
+        #endif
+        #ifndef unlikely
+            #define unlikely(x) \
+                (__branch_check__(x, 0, __builtin_constant_p(x)))
+        #endif
 
-#ifdef CONFIG_PROFILE_ALL_BRANCHES
-/*
- * "Define 'is'", Bill Clinton
- * "Define 'if'", Steven Rostedt
- */
-#define if(cond, ...) if ( __trace_if_var( !!(cond , ## __VA_ARGS__) ) )
+        #ifdef CONFIG_PROFILE_ALL_BRANCHES
+            /*
+             * "Define 'is'", Bill Clinton
+             * "Define 'if'", Steven Rostedt
+             */
+            #define if(cond, ...) if (__trace_if_var(!!(cond, ##__VA_ARGS__)))
 
-#define __trace_if_var(cond) (__builtin_constant_p(cond) ? (cond) : __trace_if_value(cond))
+            #define __trace_if_var(cond) \
+                (__builtin_constant_p(cond) ? (cond) : __trace_if_value(cond))
 
-#define __trace_if_value(cond) ({			\
-	static struct ftrace_branch_data		\
-		__aligned(4)				\
-		__section("_ftrace_branch")		\
-		__if_trace = {				\
-			.func = __func__,		\
-			.file = __FILE__,		\
-			.line = __LINE__,		\
-		};					\
-	(cond) ?					\
-		(__if_trace.miss_hit[1]++,1) :		\
-		(__if_trace.miss_hit[0]++,0);		\
-})
+            #define __trace_if_value(cond)                         \
+                ({                                                 \
+                    static struct ftrace_branch_data __aligned(4)  \
+                        __section("_ftrace_branch") __if_trace = { \
+                            .func = __func__,                      \
+                            .file = __FILE__,                      \
+                            .line = __LINE__,                      \
+                        };                                         \
+                    (cond) ? (__if_trace.miss_hit[1]++, 1)         \
+                           : (__if_trace.miss_hit[0]++, 0);        \
+                })
 
-#endif /* CONFIG_PROFILE_ALL_BRANCHES */
+        #endif /* CONFIG_PROFILE_ALL_BRANCHES */
 
-#else
-# define likely(x)	__builtin_expect(!!(x), 1)
-# define unlikely(x)	__builtin_expect(!!(x), 0)
-# define likely_notrace(x)	likely(x)
-# define unlikely_notrace(x)	unlikely(x)
-#endif
+    #else
+        #define likely(x) __builtin_expect(!!(x), 1)
+        #define unlikely(x) __builtin_expect(!!(x), 0)
+        #define likely_notrace(x) likely(x)
+        #define unlikely_notrace(x) unlikely(x)
+    #endif
 
-/* Optimization barrier */
-#ifndef barrier
-/* The "volatile" is due to gcc bugs */
-# define barrier() __asm__ __volatile__("": : :"memory")
-#endif
+    /* Optimization barrier */
+    #ifndef barrier
+        /* The "volatile" is due to gcc bugs */
+        #define barrier() __asm__ __volatile__("" : : : "memory")
+    #endif
 
-#ifndef barrier_data
-/*
- * This version is i.e. to prevent dead stores elimination on @ptr
- * where gcc and llvm may behave differently when otherwise using
- * normal barrier(): while gcc behavior gets along with a normal
- * barrier(), llvm needs an explicit input variable to be assumed
- * clobbered. The issue is as follows: while the inline asm might
- * access any memory it wants, the compiler could have fit all of
- * @ptr into memory registers instead, and since @ptr never escaped
- * from that, it proved that the inline asm wasn't touching any of
- * it. This version works well with both compilers, i.e. we're telling
- * the compiler that the inline asm absolutely may see the contents
- * of @ptr. See also: https://llvm.org/bugs/show_bug.cgi?id=15495
- */
-# define barrier_data(ptr) __asm__ __volatile__("": :"r"(ptr) :"memory")
-#endif
+    #ifndef barrier_data
+        /*
+         * This version is i.e. to prevent dead stores elimination on @ptr
+         * where gcc and llvm may behave differently when otherwise using
+         * normal barrier(): while gcc behavior gets along with a normal
+         * barrier(), llvm needs an explicit input variable to be assumed
+         * clobbered. The issue is as follows: while the inline asm might
+         * access any memory it wants, the compiler could have fit all of
+         * @ptr into memory registers instead, and since @ptr never escaped
+         * from that, it proved that the inline asm wasn't touching any of
+         * it. This version works well with both compilers, i.e. we're telling
+         * the compiler that the inline asm absolutely may see the contents
+         * of @ptr. See also: https://llvm.org/bugs/show_bug.cgi?id=15495
+         */
+        #define barrier_data(ptr) \
+            __asm__ __volatile__("" : : "r"(ptr) : "memory")
+    #endif
 
-/* workaround for GCC PR82365 if needed */
-#ifndef barrier_before_unreachable
-# define barrier_before_unreachable() do { } while (0)
-#endif
+    /* workaround for GCC PR82365 if needed */
+    #ifndef barrier_before_unreachable
+        #define barrier_before_unreachable() \
+            do {                             \
+            } while (0)
+    #endif
 
-/* Unreachable code */
-#ifdef CONFIG_OBJTOOL
-/*
- * These macros help objtool understand GCC code flow for unreachable code.
- * The __COUNTER__ based labels are a hack to make each instance of the macros
- * unique, to convince GCC not to merge duplicate inline asm statements.
- */
-#define __stringify_label(n) #n
+    /* Unreachable code */
+    #ifdef CONFIG_OBJTOOL
+        /*
+         * These macros help objtool understand GCC code flow for unreachable
+         * code. The __COUNTER__ based labels are a hack to make each instance
+         * of the macros unique, to convince GCC not to merge duplicate inline
+         * asm statements.
+         */
+        #define __stringify_label(n) #n
 
-#define __annotate_reachable(c) ({					\
-	asm volatile(__stringify_label(c) ":\n\t"			\
-			".pushsection .discard.reachable\n\t"		\
-			".long " __stringify_label(c) "b - .\n\t"	\
-			".popsection\n\t");				\
-})
-#define annotate_reachable() __annotate_reachable(__COUNTER__)
+        #define __annotate_reachable(c)                 \
+            ({                                          \
+                asm volatile(__stringify_label(c        \
+                ) ":\n\t"                               \
+                  ".pushsection .discard.reachable\n\t" \
+                  ".long " __stringify_label(c          \
+                  ) "b - .\n\t"                         \
+                    ".popsection\n\t");                 \
+            })
+        #define annotate_reachable() __annotate_reachable(__COUNTER__)
 
-#define __annotate_unreachable(c) ({					\
-	asm volatile(__stringify_label(c) ":\n\t"			\
-		     ".pushsection .discard.unreachable\n\t"		\
-		     ".long " __stringify_label(c) "b - .\n\t"		\
-		     ".popsection\n\t" : : "i" (c));			\
-})
-#define annotate_unreachable() __annotate_unreachable(__COUNTER__)
+        #define __annotate_unreachable(c)                 \
+            ({                                            \
+                asm volatile(__stringify_label(c          \
+                ) ":\n\t"                                 \
+                  ".pushsection .discard.unreachable\n\t" \
+                  ".long " __stringify_label(c            \
+                  ) "b - .\n\t"                           \
+                    ".popsection\n\t"                     \
+                             :                            \
+                             : "i"(c));                   \
+            })
+        #define annotate_unreachable() __annotate_unreachable(__COUNTER__)
 
-/* Annotate a C jump table to allow objtool to follow the code flow */
-#define __annotate_jump_table __section(".rodata..c_jump_table,\"a\",@progbits #")
+        /* Annotate a C jump table to allow objtool to follow the code flow */
+        #define __annotate_jump_table \
+            __section(".rodata..c_jump_table,\"a\",@progbits #")
 
-#else /* !CONFIG_OBJTOOL */
-#define annotate_reachable()
-#define annotate_unreachable()
-#define __annotate_jump_table
-#endif /* CONFIG_OBJTOOL */
+    #else /* !CONFIG_OBJTOOL */
+        #define annotate_reachable()
+        #define annotate_unreachable()
+        #define __annotate_jump_table
+    #endif /* CONFIG_OBJTOOL */
 
-#ifndef unreachable
-# define unreachable() do {		\
-	annotate_unreachable();		\
-	__builtin_unreachable();	\
-} while (0)
-#endif
+    #ifndef unreachable
+        #define unreachable()            \
+            do {                         \
+                annotate_unreachable();  \
+                __builtin_unreachable(); \
+            } while (0)
+    #endif
 
-/*
- * KENTRY - kernel entry point
- * This can be used to annotate symbols (functions or data) that are used
- * without their linker symbol being referenced explicitly. For example,
- * interrupt vector handlers, or functions in the kernel image that are found
- * programatically.
- *
- * Not required for symbols exported with EXPORT_SYMBOL, or initcalls. Those
- * are handled in their own way (with KEEP() in linker scripts).
- *
- * KENTRY can be avoided if the symbols in question are marked as KEEP() in the
- * linker script. For example an architecture could KEEP() its entire
- * boot/exception vector code rather than annotate each function and data.
- */
-#ifndef KENTRY
-# define KENTRY(sym)						\
-	extern typeof(sym) sym;					\
-	static const unsigned long __kentry_##sym		\
-	__used							\
-	__attribute__((__section__("___kentry+" #sym)))		\
-	= (unsigned long)&sym;
-#endif
+    /*
+     * KENTRY - kernel entry point
+     * This can be used to annotate symbols (functions or data) that are used
+     * without their linker symbol being referenced explicitly. For example,
+     * interrupt vector handlers, or functions in the kernel image that are
+     * found programatically.
+     *
+     * Not required for symbols exported with EXPORT_SYMBOL, or initcalls. Those
+     * are handled in their own way (with KEEP() in linker scripts).
+     *
+     * KENTRY can be avoided if the symbols in question are marked as KEEP() in
+     * the linker script. For example an architecture could KEEP() its entire
+     * boot/exception vector code rather than annotate each function and data.
+     */
+    #ifndef KENTRY
+        #define KENTRY(sym)                                       \
+            extern typeof(sym) sym;                               \
+            static const unsigned long __kentry_##sym __used      \
+                __attribute__((__section__("___kentry+" #sym))) = \
+                    (unsigned long) &sym;
+    #endif
 
-#ifndef RELOC_HIDE
-# define RELOC_HIDE(ptr, off)					\
-  ({ unsigned long __ptr;					\
-     __ptr = (unsigned long) (ptr);				\
-    (typeof(ptr)) (__ptr + (off)); })
-#endif
+    #ifndef RELOC_HIDE
+        #define RELOC_HIDE(ptr, off)           \
+            ({                                 \
+                unsigned long __ptr;           \
+                __ptr = (unsigned long) (ptr); \
+                (typeof(ptr)) (__ptr + (off)); \
+            })
+    #endif
 
-#define absolute_pointer(val)	RELOC_HIDE((void *)(val), 0)
+    #define absolute_pointer(val) RELOC_HIDE((void *) (val), 0)
 
-#ifndef OPTIMIZER_HIDE_VAR
-/* Make the optimizer believe the variable can be manipulated arbitrarily. */
-#define OPTIMIZER_HIDE_VAR(var)						\
-	__asm__ ("" : "=r" (var) : "0" (var))
-#endif
+    #ifndef OPTIMIZER_HIDE_VAR
+        /* Make the optimizer believe the variable can be manipulated
+         * arbitrarily. */
+        #define OPTIMIZER_HIDE_VAR(var) __asm__("" : "=r"(var) : "0"(var))
+    #endif
 
-#define __UNIQUE_ID(prefix) __PASTE(__PASTE(__UNIQUE_ID_, prefix), __COUNTER__)
+    #define __UNIQUE_ID(prefix) \
+        __PASTE(__PASTE(__UNIQUE_ID_, prefix), __COUNTER__)
 
-/**
- * data_race - mark an expression as containing intentional data races
- *
- * This data_race() macro is useful for situations in which data races
- * should be forgiven.  One example is diagnostic code that accesses
- * shared variables but is not a part of the core synchronization design.
- * For example, if accesses to a given variable are protected by a lock,
- * except for diagnostic code, then the accesses under the lock should
- * be plain C-language accesses and those in the diagnostic code should
- * use data_race().  This way, KCSAN will complain if buggy lockless
- * accesses to that variable are introduced, even if the buggy accesses
- * are protected by READ_ONCE() or WRITE_ONCE().
- *
- * This macro *does not* affect normal code generation, but is a hint
- * to tooling that data races here are to be ignored.  If the access must
- * be atomic *and* KCSAN should ignore the access, use both data_race()
- * and READ_ONCE(), for example, data_race(READ_ONCE(x)).
- */
-#define data_race(expr)							\
-({									\
-	__kcsan_disable_current();					\
-	__auto_type __v = (expr);					\
-	__kcsan_enable_current();					\
-	__v;								\
-})
+    /**
+     * data_race - mark an expression as containing intentional data races
+     *
+     * This data_race() macro is useful for situations in which data races
+     * should be forgiven.  One example is diagnostic code that accesses
+     * shared variables but is not a part of the core synchronization design.
+     * For example, if accesses to a given variable are protected by a lock,
+     * except for diagnostic code, then the accesses under the lock should
+     * be plain C-language accesses and those in the diagnostic code should
+     * use data_race().  This way, KCSAN will complain if buggy lockless
+     * accesses to that variable are introduced, even if the buggy accesses
+     * are protected by READ_ONCE() or WRITE_ONCE().
+     *
+     * This macro *does not* affect normal code generation, but is a hint
+     * to tooling that data races here are to be ignored.  If the access must
+     * be atomic *and* KCSAN should ignore the access, use both data_race()
+     * and READ_ONCE(), for example, data_race(READ_ONCE(x)).
+     */
+    #define data_race(expr)            \
+        ({                             \
+            __kcsan_disable_current(); \
+            __auto_type __v = (expr);  \
+            __kcsan_enable_current();  \
+            __v;                       \
+        })
 
-/*
- * Force the compiler to emit 'sym' as a symbol, so that we can reference
- * it from inline assembler. Necessary in case 'sym' could be inlined
- * otherwise, or eliminated entirely due to lack of references that are
- * visible to the compiler.
- */
-#define ___ADDRESSABLE(sym, __attrs) \
-	static void * __used __attrs \
-	__UNIQUE_ID(__PASTE(__addressable_,sym)) = (void *)(uintptr_t)&sym;
-#define __ADDRESSABLE(sym) \
-	___ADDRESSABLE(sym, __section(".discard.addressable"))
+    /*
+     * Force the compiler to emit 'sym' as a symbol, so that we can reference
+     * it from inline assembler. Necessary in case 'sym' could be inlined
+     * otherwise, or eliminated entirely due to lack of references that are
+     * visible to the compiler.
+     */
+    #define ___ADDRESSABLE(sym, __attrs)                                     \
+        static void *__used __attrs __UNIQUE_ID(__PASTE(__addressable_, sym) \
+        ) = (void *) (uintptr_t) &sym;
+    #define __ADDRESSABLE(sym) \
+        ___ADDRESSABLE(sym, __section(".discard.addressable"))
 
 /**
  * offset_to_ptr - convert a relative memory offset to an absolute pointer
  * @off:	the address of the 32-bit offset value
  */
-static inline void *offset_to_ptr(const int *off)
-{
-	return (void *)((unsigned long)off + *off);
+static inline void *offset_to_ptr(const int *off) {
+    return (void *) ((unsigned long) off + *off);
 }
 
 #endif /* __ASSEMBLY__ */
 
 /* &a[0] degrades to a pointer: a different type from an array */
-#define __must_be_array(a)	BUILD_BUG_ON_ZERO(__same_type((a), &(a)[0]))
+#define __must_be_array(a) BUILD_BUG_ON_ZERO(__same_type((a), &(a)[0]))
 
 /* Require C Strings (i.e. NUL-terminated) lack the "nonstring" attribute. */
-#define __must_be_cstr(p)	BUILD_BUG_ON_ZERO(__annotated(p, nonstring))
+#define __must_be_cstr(p) BUILD_BUG_ON_ZERO(__annotated(p, nonstring))
 
 /*
  * This returns a constant expression while determining if an argument is
@@ -284,13 +297,13 @@ static inline void *offset_to_ptr(const int *off)
  *     sizeof(int) != sizeof(void)    (x) was not a constant expression
  */
 #define __is_constexpr(x) \
-	(sizeof(int) == sizeof(*(8 ? ((void *)((long)(x) * 0l)) : (int *)8)))
+    (sizeof(int) == sizeof(*(8 ? ((void *) ((long) (x) * 0l)) : (int *) 8)))
 
 /*
  * Whether 'type' is a signed type or an unsigned type. Supports scalar types,
  * bool and also pointer types.
  */
-#define is_signed_type(type) (((type)(-1)) < (__force type)1)
+#define is_signed_type(type) (((type) (-1)) < (__force type) 1)
 #define is_unsigned_type(type) (!is_signed_type(type))
 
 /*
@@ -306,7 +319,43 @@ static inline void *offset_to_ptr(const int *off)
  * This is needed in functions which generate the stack canary, see
  * arch/x86/kernel/smpboot.c::start_secondary() for an example.
  */
-#define prevent_tail_call_optimization()	mb()
+#define prevent_tail_call_optimization() mb()
+
+/*
+ * Yes, this permits 64-bit accesses on 32-bit architectures. These will
+ * actually be atomic in some cases (namely Armv7 + LPAE), but for others we
+ * rely on the access being split into 2x32-bit accesses for a 32-bit quantity
+ * (e.g. a virtual address) and a strong prevailing wind.
+ */
+#define compiletime_assert_rwonce_type(t)                   \
+    compiletime_assert(                                     \
+        __native_word(t) || sizeof(t) == sizeof(long long), \
+        "Unsupported access size for {READ,WRITE}_ONCE()."  \
+    )
+
+/*
+ * Use __READ_ONCE() instead of READ_ONCE() if you do not require any
+ * atomicity. Note that this may result in tears!
+ */
+#ifndef __READ_ONCE
+    #define __READ_ONCE(x) (*(const volatile __unqual_scalar_typeof(x) *) &(x))
+#endif
+
+#define READ_ONCE(x)                       \
+    ({                                     \
+        compiletime_assert_rwonce_type(x); \
+        __READ_ONCE(x);                    \
+    })
+
+#define __WRITE_ONCE(x, val)                  \
+    do {                                      \
+        *(volatile typeof(x) *) &(x) = (val); \
+    } while (0)
+
+#define WRITE_ONCE(x, val)                 \
+    do {                                   \
+        compiletime_assert_rwonce_type(x); \
+        __WRITE_ONCE(x, val);              \
+    } while (0)
 
 #endif /* __LINUX_COMPILER_H */
-

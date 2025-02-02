@@ -1,9 +1,11 @@
 # Root CMakeLists.txt
 cmake_minimum_required(VERSION 3.20)
-project(libcove
-        VERSION 0.1.0
-        DESCRIPTION "A modern C data structures and algorithms library"
-        LANGUAGES C)
+project(
+    libcove
+    VERSION 0.1.0
+    DESCRIPTION "A modern C data structures and algorithms library"
+    LANGUAGES C
+)
 
 # Set C17 standard
 set(CMAKE_C_STANDARD 17)
@@ -26,17 +28,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(urcu)
 
 # Configure urcu build
-execute_process(
-    COMMAND ./bootstrap
-    WORKING_DIRECTORY ${urcu_SOURCE_DIR}
-)
+execute_process(COMMAND ./bootstrap WORKING_DIRECTORY ${urcu_SOURCE_DIR})
 execute_process(
     COMMAND ./configure --prefix=${urcu_BINARY_DIR}/install
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
 )
 
 # Create a custom target for building urcu
-add_custom_target(urcu_build ALL
+add_custom_target(
+    urcu_build
+    ALL
     COMMAND make
     COMMAND make install
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
@@ -46,18 +47,15 @@ add_custom_target(urcu_build ALL
 set(URCU_INCLUDE_DIR ${urcu_BINARY_DIR}/install/include)
 set(URCU_LIBRARY_DIR ${urcu_BINARY_DIR}/install/lib)
 # Define library
-add_library(cove
-    src/refcount.c
-    src/rbtree.c
-)
+add_library(cove src/refcount.c src/rbtree.c)
 
 # Set include directories
-target_include_directories(cove
+target_include_directories(
+    cove
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 # Testing
@@ -78,7 +76,8 @@ endif()
 
 # Installation
 include(GNUInstallDirs)
-install(TARGETS cove
+install(
+    TARGETS cove
     EXPORT coveTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -86,14 +85,12 @@ install(TARGETS cove
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-install(DIRECTORY include/cove
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
+install(DIRECTORY include/cove DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # Export targets
-install(EXPORT coveTargets
+install(
+    EXPORT coveTargets
     FILE coveTargets.cmake
     NAMESPACE cove::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cove
 )
-
