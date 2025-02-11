@@ -46,8 +46,8 @@ execute_process(
 add_custom_target(
     urcu_build
     ALL
-    COMMAND make > /dev/null
-    COMMAND make install
+    COMMAND make > /dev/null 2>&1
+    COMMAND make install > /dev/null 2>&1
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
 )
 
