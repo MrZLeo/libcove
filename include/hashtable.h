@@ -14,14 +14,6 @@ static inline int ilog2(uint32_t x) {
     return 31 - __builtin_clz(x);
 }
 
-/*
- * Force a compilation error if condition is true, but also produce a
- * result (of value 0 and type int), so the expression can be used
- * e.g. in a structure initializer (or where-ever else comma expressions
- * aren't permitted).
- */
-#define BUILD_BUG_ON_ZERO(e) ((int) (sizeof(struct { int : (-!!(e)); })))
-
 /* Are two types/vars the same type (ignoring qualifiers)? */
 #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))
 

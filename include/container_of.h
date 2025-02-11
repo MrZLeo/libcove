@@ -3,7 +3,6 @@
 #define _LINUX_CONTAINER_OF_H
 
 #include "build_bug.h"
-#include <stddef.h>
 
 #define typeof_member(T, m)	typeof(((T*)0)->m)
 

@@ -331,13 +331,13 @@ static inline void __chk_io_ptr(const volatile void __iomem *ptr) {}
          * Apply __counted_by() when the Endianness matches to increase test
          * coverage.
          */
-        #ifdef __LITTLE_ENDIAN
-            #define __counted_by_le(member) __counted_by(member)
-            #define __counted_by_be(member)
-        #else
-            #define __counted_by_le(member)
-            #define __counted_by_be(member) __counted_by(member)
-        #endif
+        /*#ifdef __LITTLE_ENDIAN*/
+        /*    #define __counted_by_le(member) __counted_by(member)*/
+        /*    #define __counted_by_be(member)*/
+        /*#else*/
+        /*    #define __counted_by_le(member)*/
+        /*    #define __counted_by_be(member) __counted_by(member)*/
+        /*#endif*/
 
         /* Do not trap wrapping arithmetic within an annotated function. */
         #ifdef CONFIG_UBSAN_SIGNED_WRAP
