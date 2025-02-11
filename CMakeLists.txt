@@ -12,6 +12,7 @@ set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_BUILD_TYPE Release)
 
 # Add compile options
 add_compile_options(-Wall -Wextra -Werror)
@@ -32,11 +33,13 @@ execute_process(
     COMMAND ./bootstrap
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
     OUTPUT_QUIET
+    ERROR_QUIET
 )
 execute_process(
     COMMAND ./configure --prefix=${urcu_BINARY_DIR}/install
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
     OUTPUT_QUIET
+    ERROR_QUIET
 )
 
 # Create a custom target for building urcu

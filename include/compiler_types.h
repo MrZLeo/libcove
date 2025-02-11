@@ -88,10 +88,9 @@ static inline void __chk_io_ptr(const volatile void __iomem *ptr) {}
     #define ___PASTE(a, b) a##b
     #define __PASTE(a, b) ___PASTE(a, b)
 
-    #ifdef __KERNEL__
 
         /* Attributes */
-        #include <linux/compiler_attributes.h>
+        #include "compiler_attributes.h"
 
         #if CONFIG_FUNCTION_ALIGNMENT > 0
             #define __function_aligned __aligned(CONFIG_FUNCTION_ALIGNMENT)
@@ -180,15 +179,15 @@ static inline void __chk_io_ptr(const volatile void __iomem *ptr) {}
         #endif
 
         /* Compiler specific macros. */
-        #ifdef __clang__
-            #include <linux/compiler-clang.h>
-        #elif defined(__GNUC__)
-            /* The above compilers also define __GNUC__, so order is important
-             * here. */
-            #include <linux/compiler-gcc.h>
-        #else
-            #error "Unknown compiler"
-        #endif
+        /*#ifdef __clang__*/
+        /*    #include <linux/compiler-clang.h>*/
+        /*#elif defined(__GNUC__)*/
+            /* The above compilers also define __GNUC__, so order is important*/
+        /*     * here. */
+        /*    #include <linux/compiler-gcc.h>*/
+        /*#else*/
+        /*    #error "Unknown compiler"*/
+        /*#endif*/
 
         /*
          * Some architectures need to provide custom definitions of macros
@@ -198,31 +197,10 @@ static inline void __chk_io_ptr(const volatile void __iomem *ptr) {}
          * will include this file via an -include argument in c_flags, occurs
          * prior to the asm-generic wrappers being generated.
          */
-        #ifdef CONFIG_HAVE_ARCH_COMPILER_H
-            #include <asm/compiler.h>
-        #endif
+        /*#ifdef CONFIG_HAVE_ARCH_COMPILER_H*/
+        /*    #include <asm/compiler.h>*/
+        /*#endif*/
 
-struct ftrace_branch_data {
-    const char *func;
-    const char *file;
-    unsigned line;
-    union {
-        struct {
-            unsigned long correct;
-            unsigned long incorrect;
-        };
-        struct {
-            unsigned long miss;
-            unsigned long hit;
-        };
-        unsigned long miss_hit[2];
-    };
-};
-
-struct ftrace_likely_data {
-    struct ftrace_branch_data data;
-    unsigned long constant;
-};
 
         #if defined(CC_USING_HOTPATCH)
             #define notrace __attribute__((hotpatch(0, 0)))
@@ -389,8 +367,6 @@ struct ftrace_likely_data {
          */
         #define __cpuidle __noinstr_section(".cpuidle.text")
 
-    #endif /* __KERNEL__ */
-
 #endif /* __ASSEMBLY__ */
 
 /*
@@ -517,17 +493,17 @@ struct ftrace_likely_data {
      || sizeof(t) == sizeof(int) || sizeof(t) == sizeof(long))
 
 #ifdef __OPTIMIZE__
-    #define __compiletime_assert(condition, msg, prefix, suffix)   \
-        do {                                                       \
-            /*                                                     \
-             * __noreturn is needed to give the compiler enough    \
-             * information to avoid certain possibly-uninitialized \
-             * warnings (regardless of the build failing).         \
-             */                                                    \
-            __noreturn extern void prefix##suffix(void)            \
-                __compiletime_error(msg);                          \
-            if (!(condition))                                      \
-                prefix##suffix();                                  \
+    #define __compiletime_assert(condition, msg, prefix, suffix)           \
+        do {                                                               \
+            /*                                                             \
+             * __noreturn is needed to give the compiler enough            \
+             * information to avoid certain possibly-uninitialized         \
+             * warnings (regardless of the build failing).                 \
+             */                                                            \
+            __attribute__((__noreturn__)) extern void prefix##suffix(void) \
+                __compiletime_error(msg);                                  \
+            if (!(condition))                                              \
+                prefix##suffix();                                          \
         } while (0)
 #else
     #define __compiletime_assert(condition, msg, prefix, suffix) \
