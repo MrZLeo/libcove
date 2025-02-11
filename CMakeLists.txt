@@ -32,13 +32,11 @@ execute_process(
     COMMAND ./bootstrap
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
     OUTPUT_QUIET
-    ERROR_QUIET
 )
 execute_process(
     COMMAND ./configure --prefix=${urcu_BINARY_DIR}/install
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
     OUTPUT_QUIET
-    ERROR_QUIET
 )
 
 # Create a custom target for building urcu
@@ -46,7 +44,7 @@ add_custom_target(
     urcu_build
     ALL
     COMMAND make > /dev/null
-    # COMMAND make install
+    COMMAND make install
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
 )
 
@@ -55,7 +53,11 @@ set(URCU_INCLUDE_DIR ${urcu_BINARY_DIR}/install/include)
 set(URCU_LIBRARY_DIR ${urcu_BINARY_DIR}/install/lib)
 
 # Define library
-add_library(cove src/refcount.c src/rbtree.c)
+set(COVE_SOURCES
+    src/refcount.c
+    src/rbtree.c
+)
+add_library(cove STATIC ${COVE_SOURCES})
 
 # Add dependency on urcu_build
 add_dependencies(cove urcu_build)
