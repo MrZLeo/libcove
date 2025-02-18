@@ -67,13 +67,6 @@ set(URCU_LIBRARY_DIR ${urcu_BINARY_DIR}/install/lib)
 message(STATUS "URCU_INCLUDE_DIR: ${URCU_INCLUDE_DIR}")
 message(STATUS "URCU_LIBRARY_DIR: ${URCU_LIBRARY_DIR}")
 
-if(NOT EXISTS ${URCU_INCLUDE_DIR})
-    message(FATAL_ERROR "URCU_INCLUDE_DIR does not exist: ${URCU_INCLUDE_DIR}")
-endif()
-if(NOT EXISTS ${URCU_LIBRARY_DIR})
-    message(FATAL_ERROR "URCU_LIBRARY_DIR does not exist: ${URCU_LIBRARY_DIR}")
-endif()
-
 # Define library
 set(COVE_SOURCES
     src/refcount.c
