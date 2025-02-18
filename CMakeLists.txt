@@ -82,7 +82,9 @@ target_link_libraries(cove PRIVATE urcu)
 
 # Testing
 option(COVE_BUILD_TESTS "Build the test suite" ON)
-if(COVE_BUILD_TESTS)
+
+# Only enable tests if this is the top-level project
+if(PROJECT_IS_TOP_LEVEL AND COVE_BUILD_TESTS)
     enable_testing()
 
     include(FetchContent)
