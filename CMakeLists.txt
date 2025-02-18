@@ -32,15 +32,24 @@ FetchContent_MakeAvailable(urcu)
 execute_process(
     COMMAND ./bootstrap
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
-    OUTPUT_QUIET
-    ERROR_QUIET
+    RESULT_VARIABLE bootstrap_result
+    OUTPUT_VARIABLE bootstrap_output
+    ERROR_VARIABLE bootstrap_error
 )
+if(NOT bootstrap_result EQUAL 0)
+    message(FATAL_ERROR "Bootstrap failed: ${bootstrap_error}")
+endif()
+
 execute_process(
     COMMAND ./configure --prefix=${urcu_BINARY_DIR}/install
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
-    OUTPUT_QUIET
-    ERROR_QUIET
+    RESULT_VARIABLE configure_result
+    OUTPUT_VARIABLE configure_output
+    ERROR_VARIABLE configure_error
 )
+if(NOT configure_result EQUAL 0)
+    message(FATAL_ERROR "Configure failed: ${configure_error}")
+endif()
 
 # Create a custom target for building urcu
 add_custom_target(
@@ -54,6 +63,16 @@ add_custom_target(
 # Set include and library paths
 set(URCU_INCLUDE_DIR ${urcu_BINARY_DIR}/install/include)
 set(URCU_LIBRARY_DIR ${urcu_BINARY_DIR}/install/lib)
+
+message(STATUS "URCU_INCLUDE_DIR: ${URCU_INCLUDE_DIR}")
+message(STATUS "URCU_LIBRARY_DIR: ${URCU_LIBRARY_DIR}")
+
+if(NOT EXISTS ${URCU_INCLUDE_DIR})
+    message(FATAL_ERROR "URCU_INCLUDE_DIR does not exist: ${URCU_INCLUDE_DIR}")
+endif()
+if(NOT EXISTS ${URCU_LIBRARY_DIR})
+    message(FATAL_ERROR "URCU_LIBRARY_DIR does not exist: ${URCU_LIBRARY_DIR}")
+endif()
 
 # Define library
 set(COVE_SOURCES
@@ -71,14 +90,23 @@ target_include_directories(
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${URCU_INCLUDE_DIR}>
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${URCU_INCLUDE_DIR}
 )
 
 # Link against urcu
-target_link_directories(cove PRIVATE ${URCU_LIBRARY_DIR})
-target_link_libraries(cove PRIVATE urcu)
+target_link_directories(
+    cove
+    PUBLIC
+        $<BUILD_INTERFACE:${URCU_LIBRARY_DIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_LIBDIR}>
+)
+target_link_libraries(cove PUBLIC urcu)
+set_target_properties(cove PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "$ORIGIN/../lib"
+)
 
 # Testing
 option(COVE_BUILD_TESTS "Build the test suite" ON)
@@ -118,3 +146,4 @@ install(
     NAMESPACE cove::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cove
 )
+
