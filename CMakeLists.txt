@@ -55,7 +55,7 @@ endif()
 add_custom_target(
     urcu_build
     ALL
-    COMMAND make > /dev/null 2>&1
+    COMMAND ccache make > /dev/null 2>&1
     COMMAND make install > /dev/null 2>&1
     WORKING_DIRECTORY ${urcu_SOURCE_DIR}
 )
